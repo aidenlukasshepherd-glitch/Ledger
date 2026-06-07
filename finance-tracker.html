@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black"/>
+<meta name="apple-mobile-web-app-title" content="Ledger"/>
+<title>Ledger</title>
+<link href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+input[type=number]{-moz-appearance:textfield}
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none}
+
+:root{
+  --bg:#0a0a0a;
+  --glass:rgba(22,22,24,0.92);
+  --card:rgba(28,28,30,0.95);
+  --card2:rgba(38,38,40,0.95);
+  --border:rgba(255,255,255,0.08);
+  --border2:rgba(255,255,255,0.14);
+  --txt:#f5f5f7;
+  --txt2:#98989f;
+  --txt3:#4a4a52;
+  --blue:#0a84ff;
+  --green:#30d158;
+  --red:#ff453a;
+  --yellow:#ffd60a;
+  --orange:#ff9f0a;
+  --purple:#bf5af2;
+  --caslon:'IM Fell English','Big Caslon',Georgia,serif;
+  --mono:'SF Mono','Courier New',monospace;
+  --r:16px;
+  --r-sm:10px;
+}
+
+html,body{
+  height:100%;background:var(--bg);color:var(--txt);
+  font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;
+  font-size:15px;overscroll-behavior:none;
+}
+
+/* ── SHELL ── */
+.shell{display:flex;height:100vh;overflow:hidden}
+
+/* ── SIDEBAR ── */
+.sidebar{
+  width:72px;flex-shrink:0;
+  background:var(--glass);
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  border-right:1px solid var(--border);
+  display:flex;flex-direction:column;align-items:center;
+  padding-top:56px;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px));
+  gap:4px;
+}
+.sb-logo{
+  font-family:var(--caslon);font-style:italic;
+  font-size:17px;color:var(--txt2);font-weight:400;
+  margin-bottom:28px;letter-spacing:.04em;
+}
+.sb-btn{
+  width:52px;height:52px;border-radius:14px;
+  background:none;border:none;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:3px;cursor:pointer;color:var(--txt3);
+  transition:background .15s,color .15s;
+}
+.sb-btn svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.sb-btn span{font-size:9px;letter-spacing:.02em}
+.sb-btn:hover{background:rgba(255,255,255,.06);color:var(--txt2)}
+.sb-btn.active{background:rgba(255,255,255,.1);color:var(--txt)}
+.sb-btn.active svg{stroke:var(--blue)}
+.sb-spacer{flex:1}
+
+/* ── MAIN ── */
+.main{flex:1;overflow-y:auto;overflow-x:hidden;height:100vh;-webkit-overflow-scrolling:touch}
+.main::-webkit-scrollbar{width:0}
+
+/* ── PAGE ── */
+.page{display:none;padding-bottom:48px;min-height:100vh}
+.page.active{display:block}
+
+/* ── STICKY HEADER ── */
+.page-hero{
+  padding:56px 20px 18px;
+  position:sticky;top:0;z-index:5;
+  background:rgba(10,10,10,.85);
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border);
+}
+.page-eyebrow{font-size:11px;letter-spacing:.06em;color:var(--txt3);margin-bottom:4px;font-family:var(--mono)}
+.page-title{font-size:30px;font-weight:700;letter-spacing:-.5px;line-height:1}
+
+/* ── SECTION ── */
+.section{padding:20px 16px 0}
+.section-label{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--txt3);margin-bottom:10px;padding:0 2px}
+
+/* ── CARD ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.card+.card{margin-top:10px}
+.card-row{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border);gap:12px}
+.card-row:last-child{border-bottom:none}
+.cr-label{font-size:14px;font-weight:500}
+.cr-sub{font-size:12px;color:var(--txt3);margin-top:2px}
+.cr-val{font-family:var(--mono);font-size:14px;white-space:nowrap}
+
+/* ── GROSS INPUT ── */
+.gross-card{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:var(--r);padding:20px;
+  display:flex;align-items:center;gap:4px;
+}
+.gross-prefix{font-size:44px;font-weight:300;color:var(--txt3);font-family:var(--mono);line-height:1}
+.gross-input{
+  flex:1;background:none;border:none;outline:none;
+  font-size:48px;font-weight:700;font-family:var(--mono);
+  color:var(--txt);letter-spacing:-2px;min-width:0;line-height:1;
+}
+.gross-input::placeholder{color:rgba(255,255,255,.1)}
+
+/* ── SPLIT ROW ── */
+.split-row{display:flex;align-items:center;padding:12px 16px;border-bottom:1px solid var(--border);gap:12px}
+.split-row:last-child{border-bottom:none}
+.split-pip{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.split-info{flex:1;min-width:0}
+.split-name{font-size:14px;font-weight:500}
+.split-amt{font-size:12px;color:var(--txt3);font-family:var(--mono);margin-top:2px}
+.split-controls{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.pct-pill{display:flex;align-items:center;gap:2px;background:rgba(255,255,255,.06);border:1px solid var(--border2);border-radius:8px;padding:5px 8px}
+.pct-in{width:32px;background:none;border:none;outline:none;font-family:var(--mono);font-size:13px;color:var(--txt);text-align:center}
+.pct-in::placeholder{color:var(--txt3)}
+.pct-sym{font-family:var(--mono);font-size:11px;color:var(--txt3)}
+.ovr-field{width:76px;background:rgba(255,255,255,.06);border:1px solid var(--border2);border-radius:8px;padding:5px 8px;font-family:var(--mono);font-size:13px;color:var(--txt);outline:none;text-align:right}
+.ovr-field::placeholder{color:var(--txt3)}
+
+/* ── REMAIN STRIP ── */
+.remain-strip{
+  display:flex;justify-content:space-between;align-items:center;
+  background:rgba(255,255,255,.04);border:1px solid var(--border);
+  border-radius:var(--r-sm);padding:10px 14px;font-family:var(--mono);font-size:12px;
+}
+.rs-lbl{color:var(--txt3)}
+.rs-val{color:var(--txt)}
+.rs-val.warn{color:var(--red)}
+
+/* ── SETTINGS INPUTS ── */
+.input-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.input-row{display:flex;align-items:center;padding:0 16px;border-bottom:1px solid var(--border);min-height:50px;gap:10px}
+.input-row:last-child{border-bottom:none}
+.input-lbl{font-size:14px;color:var(--txt);flex-shrink:0;min-width:130px}
+.input-field{flex:1;background:none;border:none;outline:none;font-size:14px;color:var(--txt);text-align:right;font-family:var(--mono);padding:14px 0}
+.input-field::placeholder{color:var(--txt3)}
+.input-sym{font-size:13px;color:var(--txt3);font-family:var(--mono)}
+
+/* ── BUTTONS ── */
+.btn-primary{width:100%;padding:15px;border-radius:var(--r);border:none;background:var(--blue);color:#fff;font-size:16px;font-weight:600;cursor:pointer;transition:opacity .15s,transform .1s}
+.btn-primary:active{transform:scale(.98);opacity:.85}
+.btn-primary:disabled{opacity:.25;pointer-events:none}
+.btn-secondary{width:100%;padding:13px;border-radius:var(--r);border:1px solid var(--border2);background:rgba(255,255,255,.06);color:var(--txt);font-size:15px;font-weight:500;cursor:pointer}
+.btn-danger{width:100%;padding:13px;border-radius:var(--r);border:1px solid rgba(255,69,58,.3);background:rgba(255,69,58,.08);color:var(--red);font-size:14px;cursor:pointer}
+
+/* ── HISTORY ENTRIES ── */
+.hist-entry{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.hist-entry+.hist-entry{margin-top:10px}
+.hist-header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--border)}
+.hist-date{font-size:13px;font-weight:600}
+.hist-total{font-size:13px;font-family:var(--mono);color:var(--txt2)}
+.hist-actions{display:flex;gap:8px}
+.hist-btn{background:none;border:none;font-size:12px;font-family:var(--mono);cursor:pointer;padding:4px 8px;border-radius:6px}
+.hist-btn.edit{color:var(--blue);background:rgba(10,132,255,.12)}
+.hist-btn.del{color:var(--red);background:rgba(255,69,58,.12)}
+.hist-chips{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border)}
+.hist-chip{background:var(--card);padding:10px 14px}
+.hc-lbl{font-size:10px;color:var(--txt3);font-family:var(--mono);letter-spacing:.04em;text-transform:uppercase;margin-bottom:2px}
+.hc-val{font-size:14px;font-family:var(--mono);font-weight:500}
+
+/* ── MODAL ── */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);z-index:200;align-items:flex-end;justify-content:center}
+.modal-bg.open{display:flex}
+.modal{background:rgba(28,28,30,.98);border:1px solid var(--border2);border-radius:20px 20px 0 0;padding:20px 16px calc(32px + env(safe-area-inset-bottom,0px));width:100%;max-width:500px;max-height:85vh;overflow-y:auto}
+.modal::-webkit-scrollbar{display:none}
+.modal-handle{width:36px;height:4px;background:rgba(255,255,255,.2);border-radius:2px;margin:0 auto 20px}
+.modal h3{font-size:18px;font-weight:600;margin-bottom:6px}
+.modal-sub{font-size:12px;color:var(--txt3);margin-bottom:16px;font-family:var(--mono)}
+.modal-field{margin-bottom:12px}
+.modal-field label{display:block;font-size:11px;font-family:var(--mono);color:var(--txt3);letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px}
+.modal-field input{width:100%;background:rgba(255,255,255,.07);border:1px solid var(--border2);border-radius:var(--r-sm);padding:11px 14px;font-size:15px;font-family:var(--mono);color:var(--txt);outline:none}
+.modal-field input:focus{border-color:var(--blue)}
+.modal-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
+.modal-btns button{padding:13px;border-radius:var(--r-sm);font-size:15px;font-weight:600;cursor:pointer;border:none}
+.mbtn-cancel{background:rgba(255,255,255,.08);color:var(--txt)}
+.mbtn-ok{background:var(--blue);color:#fff}
+
+/* alloc modal split rows */
+.pam-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border);gap:12px}
+.pam-row:last-child{border-bottom:none}
+.pam-left{display:flex;align-items:center;gap:8px;flex:1}
+.pam-pip{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.pam-name{font-size:14px;font-weight:500}
+.pam-calc{font-size:12px;font-family:var(--mono);color:var(--txt3);margin-top:2px}
+.pam-input{width:90px;background:rgba(255,255,255,.07);border:1px solid var(--border2);border-radius:8px;padding:8px 10px;font-family:var(--mono);font-size:14px;color:var(--txt);outline:none;text-align:right}
+.pam-input:focus{border-color:var(--blue)}
+.remain-row{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:rgba(255,255,255,.04);border-radius:10px;font-family:var(--mono);font-size:12px;margin-top:12px}
+
+/* ── EMPTY / TOAST ── */
+.empty-state{text-align:center;padding:48px 24px;color:var(--txt3);font-size:14px;line-height:1.8}
+.empty-state strong{display:block;font-size:18px;color:var(--txt2);margin-bottom:6px;font-weight:500}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:rgba(38,38,42,.98);border:1px solid var(--border2);color:var(--txt);font-family:var(--mono);font-size:12px;letter-spacing:.06em;padding:10px 18px;border-radius:20px;z-index:400;white-space:nowrap;pointer-events:none;transition:transform .25s cubic-bezier(.34,1.56,.64,1),opacity .2s;opacity:0}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<!-- ══ SIDEBAR ══════════════════════════════════════════ -->
+<nav class="sidebar">
+  <div class="sb-logo">L</div>
+
+  <button class="sb-btn active" id="nav-paycheck" onclick="go('paycheck')">
+    <svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/><line x1="6" y1="15" x2="10" y2="15"/></svg>
+    <span>Paycheck</span>
+  </button>
+
+  <button class="sb-btn" id="nav-history" onclick="go('history')">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+    <span>History</span>
+  </button>
+
+  <div class="sb-spacer"></div>
+
+  <button class="sb-btn" id="nav-settings" onclick="go('settings')">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 1 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    <span>Settings</span>
+  </button>
+</nav>
+
+<!-- ══ MAIN ═══════════════════════════════════════════════ -->
+<main class="main">
+
+  <!-- ── PAYCHECK ── -->
+  <div class="page active" id="page-paycheck">
+    <div class="page-hero">
+      <div class="page-eyebrow">New Entry</div>
+      <div class="page-title">Paycheck</div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">Amount</div>
+      <div class="gross-card">
+        <span class="gross-prefix">$</span>
+        <input class="gross-input" type="number" inputmode="decimal" id="gross-in" placeholder="0.00" oninput="onGross()"/>
+      </div>
+    </div>
+
+    <div class="section" style="padding-top:16px">
+      <div class="section-label">Split</div>
+      <div class="card" id="split-rows"></div>
+    </div>
+
+    <div class="section" style="padding-top:10px">
+      <div class="remain-strip">
+        <span class="rs-lbl">Unallocated</span>
+        <span class="rs-val" id="remain-val">—</span>
+      </div>
+    </div>
+
+    <div class="section" style="padding-top:12px">
+      <button class="btn-primary" id="log-btn" onclick="logPaycheck()" disabled>Log Paycheck</button>
+    </div>
+  </div>
+
+  <!-- ── HISTORY ── -->
+  <div class="page" id="page-history">
+    <div class="page-hero">
+      <div class="page-eyebrow">Ledger</div>
+      <div class="page-title">History</div>
+    </div>
+    <div class="section" id="hist-list" style="padding-bottom:0"></div>
+  </div>
+
+  <!-- ── SETTINGS ── -->
+  <div class="page" id="page-settings">
+    <div class="page-hero">
+      <div class="page-eyebrow">Ledger</div>
+      <div class="page-title">Settings</div>
+    </div>
+
+    <!-- Default splits -->
+    <div class="section">
+      <div class="section-label">Default % Splits</div>
+      <div class="card" id="splits-settings-list"></div>
+      <div style="margin-top:10px"><button class="btn-primary" onclick="saveSplits()">Save Splits</button></div>
+    </div>
+
+    <!-- Custom categories -->
+    <div class="section" style="padding-top:20px">
+      <div class="section-label">Custom Categories</div>
+      <div class="card" id="custom-cats-list"></div>
+      <div style="margin-top:10px"><button class="btn-secondary" onclick="addCustomCat()">+ Add Category</button></div>
+      <div style="margin-top:8px"><button class="btn-primary" onclick="saveCustomCats()">Save Categories</button></div>
+    </div>
+
+    <!-- Danger -->
+    <div class="section" style="padding-top:20px">
+      <button class="btn-danger" onclick="confirmReset()">Reset All Data</button>
+    </div>
+
+    <div style="height:40px"></div>
+  </div>
+
+</main>
+</div>
+
+<!-- ══ ALLOC MODAL ══════════════════════════════════════ -->
+<div class="modal-bg" id="pay-alloc-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h3>Allocate <span id="pam-amount" style="color:var(--blue)"></span></h3>
+    <div class="modal-sub">Suggested from your % splits — override any amount below.</div>
+    <div id="pam-rows"></div>
+    <div class="remain-row">
+      <span style="color:var(--txt3)">Unallocated</span>
+      <span id="pam-remain">—</span>
+    </div>
+    <div class="modal-btns">
+      <button class="mbtn-cancel" onclick="closeModals()">Cancel</button>
+      <button class="mbtn-ok" onclick="confirmPaycheck()">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ EDIT PAYCHECK MODAL ════════════════════════════════ -->
+<div class="modal-bg" id="edit-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h3>Edit Paycheck</h3>
+    <div id="edit-modal-fields"></div>
+    <div class="modal-btns">
+      <button class="mbtn-cancel" onclick="closeModals()">Cancel</button>
+      <button class="mbtn-ok" onclick="saveEdit()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ══ DATA ══════════════════════════════════════════════════
+const KEY = 'ledger_v6';
+const CAT_COLORS = ['#0a84ff','#ff453a','#ffd60a','#30d158','#bf5af2','#ff9f0a','#5ac8fa','#ff6b6b'];
+
+function blank(){
+  return{
+    history:[],
+    splits:{savings:0,stocks:0,roth:0,truck:0,checking:0},
+    customCats:[]
+  };
+}
+function loadD(){
+  try{
+    const raw=localStorage.getItem(KEY);
+    return raw?Object.assign(blank(),JSON.parse(raw)):blank();
+  }catch(e){return blank();}
+}
+function saveD(){
+  try{localStorage.setItem(KEY,JSON.stringify(D));}
+  catch(e){console.warn('Could not save:',e);}
+}
+let D=loadD();
+
+// ══ UTILS ══════════════════════════════════════════════════
+function fmt(n,d=2){return'$'+Number(n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d})}
+function uid(){return Math.random().toString(36).slice(2,8)}
+
+function allCats(){
+  const base=[
+    {id:'savings',  name:'Savings',      color:'#30d158'},
+    {id:'stocks',   name:'Stocks',       color:'#0a84ff'},
+    {id:'roth',     name:'Roth IRA',     color:'#bf5af2'},
+    {id:'truck',    name:'Truck Payment',color:'#ffd60a'},
+    {id:'checking', name:'Checking',     color:'#ff9f0a'},
+  ];
+  D.customCats.forEach(c=>base.push({id:c.id,name:c.name,color:c.color}));
+  return base;
+}
+
+// ══ NAV ════════════════════════════════════════════════════
+function go(name){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.sb-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  document.getElementById('nav-'+name).classList.add('active');
+  if(name==='paycheck') initPay();
+  if(name==='history')  renderHist();
+  if(name==='settings') renderSet();
+}
+
+// ══ PAYCHECK ═══════════════════════════════════════════════
+let ovrs={};
+
+function initPay(){
+  ovrs={};
+  const rows=document.getElementById('split-rows');
+  rows.innerHTML='';
+  allCats().forEach(cat=>{
+    const pctVal=D.splits[cat.id]||(D.customCats.find(c=>c.id===cat.id)||{}).split||0;
+    ovrs[cat.id]=null;
+    rows.innerHTML+=`
+      <div class="split-row">
+        <div class="split-pip" style="background:${cat.color}"></div>
+        <div class="split-info">
+          <div class="split-name">${cat.name}</div>
+          <div class="split-amt" id="sa-${cat.id}">—</div>
+        </div>
+        <div class="split-controls">
+          <div class="pct-pill">
+            <input class="pct-in" type="number" inputmode="decimal" id="pc-${cat.id}" placeholder="0" value="${pctVal||''}" oninput="onPct('${cat.id}')"/>
+            <span class="pct-sym">%</span>
+          </div>
+          <input class="ovr-field" type="number" inputmode="decimal" id="ov-${cat.id}" placeholder="$" oninput="onOvr('${cat.id}')"/>
+        </div>
+      </div>`;
+  });
+  document.getElementById('gross-in').value='';
+  updatePay();
+}
+
+function onGross(){updatePay();}
+function onPct(id){ovrs[id]=null;const e=document.getElementById('ov-'+id);if(e)e.value='';updatePay();}
+function onOvr(id){const e=document.getElementById('ov-'+id);if(!e)return;const v=parseFloat(e.value);ovrs[id]=isNaN(v)?null:v;updatePay();}
+
+function getAmt(id,gross){
+  if(ovrs[id]!=null)return ovrs[id];
+  const e=document.getElementById('pc-'+id);
+  return gross*((e?parseFloat(e.value)||0:0)/100);
+}
+
+function updatePay(){
+  const gross=parseFloat(document.getElementById('gross-in').value)||0;
+  let alloc=0;
+  allCats().forEach(c=>{
+    const amt=getAmt(c.id,gross);
+    alloc+=amt;
+    const e=document.getElementById('sa-'+c.id);
+    if(e)e.textContent=(gross>0||ovrs[c.id]!=null)?fmt(amt):'—';
+  });
+  const rem=gross-alloc;
+  const el=document.getElementById('remain-val');
+  if(gross>0){el.textContent=fmt(rem);el.className='rs-val'+(Math.abs(rem)>0.01?' warn':'');}
+  else{el.textContent='—';el.className='rs-val';}
+  document.getElementById('log-btn').disabled=gross<=0;
+}
+
+function logPaycheck(){
+  const gross=parseFloat(document.getElementById('gross-in').value)||0;
+  if(gross<=0){toast('Enter a paycheck amount');return;}
+  document.getElementById('pam-amount').textContent=fmt(gross);
+  const rows=document.getElementById('pam-rows');
+  rows.innerHTML='';
+  allCats().forEach(cat=>{
+    const suggested=getAmt(cat.id,gross);
+    rows.innerHTML+=`
+      <div class="pam-row">
+        <div class="pam-left">
+          <div class="pam-pip" style="background:${cat.color}"></div>
+          <div>
+            <div class="pam-name">${cat.name}</div>
+            <div class="pam-calc">Suggested: ${fmt(suggested)}</div>
+          </div>
+        </div>
+        <input class="pam-input" type="number" inputmode="decimal" id="pam-${cat.id}" value="${suggested.toFixed(2)}" oninput="updatePamRemain(${gross})"/>
+      </div>`;
+  });
+  updatePamRemain(gross);
+  document.getElementById('pay-alloc-modal').classList.add('open');
+}
+
+function updatePamRemain(gross){
+  let alloc=0;
+  allCats().forEach(c=>{const e=document.getElementById('pam-'+c.id);if(e)alloc+=parseFloat(e.value)||0;});
+  const rem=gross-alloc;
+  const el=document.getElementById('pam-remain');
+  el.textContent=fmt(rem);
+  el.style.color=Math.abs(rem)>0.01?'var(--red)':'var(--green)';
+}
+
+function confirmPaycheck(){
+  const gross=parseFloat(document.getElementById('gross-in').value)||0;
+  const entry={
+    date:new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),
+    paycheck:gross,ts:Date.now(),id:uid()
+  };
+  allCats().forEach(c=>{const e=document.getElementById('pam-'+c.id);entry[c.id]=e?parseFloat(e.value)||0:0;});
+  D.history.push(entry);
+  saveD();
+  closeModals();
+  toast('Logged — '+fmt(gross));
+  go('paycheck');
+}
+
+// ══ HISTORY ════════════════════════════════════════════════
+function renderHist(){
+  const el=document.getElementById('hist-list');
+  if(!D.history.length){
+    el.innerHTML='<div class="empty-state"><strong>No history yet</strong>Log a paycheck to get started.</div>';
+    return;
+  }
+  const cats=allCats();
+  el.innerHTML=[...D.history].reverse().map((e,ri)=>{
+    const i=D.history.length-1-ri;
+    const chips=cats
+      .filter(c=>e[c.id]>0)
+      .map(c=>`<div class="hist-chip"><div class="hc-lbl">${c.name}</div><div class="hc-val" style="color:${c.color}">${fmt(e[c.id])}</div></div>`)
+      .join('');
+    const payChip=`<div class="hist-chip"><div class="hc-lbl">Paycheck</div><div class="hc-val">${fmt(e.paycheck||0)}</div></div>`;
+    return`<div class="hist-entry">
+      <div class="hist-header">
+        <div>
+          <div class="hist-date">${e.date}</div>
+        </div>
+        <div class="hist-actions">
+          <button class="hist-btn edit" onclick="openEdit(${i})">Edit</button>
+          <button class="hist-btn del" onclick="deleteEntry(${i})">Delete</button>
+        </div>
+      </div>
+      <div class="hist-chips">${payChip}${chips}</div>
+    </div>`;
+  }).join('');
+}
+
+// ══ EDIT / DELETE ══════════════════════════════════════════
+let editIdx=null;
+
+function openEdit(idx){
+  editIdx=idx;
+  const e=D.history[idx];
+  let fields=`<div class="modal-field"><label>Paycheck Amount</label><input type="number" inputmode="decimal" id="ef-paycheck" value="${e.paycheck||''}"/></div>`;
+  allCats().forEach(c=>{
+    fields+=`<div class="modal-field"><label>${c.name}</label><input type="number" inputmode="decimal" id="ef-${c.id}" value="${e[c.id]||''}"/></div>`;
+  });
+  document.getElementById('edit-modal-fields').innerHTML=fields;
+  document.getElementById('edit-modal').classList.add('open');
+}
+
+function saveEdit(){
+  if(editIdx===null)return;
+  const neu={...D.history[editIdx]};
+  neu.paycheck=parseFloat(document.getElementById('ef-paycheck').value)||0;
+  allCats().forEach(c=>{const e=document.getElementById('ef-'+c.id);neu[c.id]=e?parseFloat(e.value)||0:0;});
+  D.history[editIdx]=neu;
+  saveD();closeModals();renderHist();toast('Updated');
+}
+
+function deleteEntry(idx){
+  if(!confirm('Delete this paycheck?'))return;
+  D.history.splice(idx,1);
+  saveD();renderHist();toast('Deleted');
+}
+
+// ══ SETTINGS ═══════════════════════════════════════════════
+function renderSet(){
+  renderCustomCatsList();
+  renderSplitsSettings();
+}
+
+function renderCustomCatsList(){
+  const el=document.getElementById('custom-cats-list');
+  if(!D.customCats.length){
+    el.innerHTML='<div class="card-row"><div class="cr-label" style="color:var(--txt3);font-style:italic;font-size:13px">No custom categories yet</div></div>';
+    return;
+  }
+  el.innerHTML=D.customCats.map(c=>`
+    <div class="card-row">
+      <div style="width:10px;height:10px;border-radius:50%;background:${c.color};flex-shrink:0"></div>
+      <div style="flex:1"><input type="text" id="cn-${c.id}" value="${c.name}" style="background:none;border:none;outline:none;font-size:14px;color:var(--txt);width:100%"/></div>
+      <button onclick="removeCustomCat('${c.id}')" style="background:none;border:none;color:var(--red);font-size:20px;cursor:pointer;padding:0 4px;line-height:1">×</button>
+    </div>`).join('');
+}
+
+function renderSplitsSettings(){
+  const el=document.getElementById('splits-settings-list');
+  const cats=[
+    {id:'savings',name:'Savings'},
+    {id:'stocks',name:'Stocks'},
+    {id:'roth',name:'Roth IRA'},
+    {id:'truck',name:'Truck Payment'},
+    {id:'checking',name:'Checking'},
+    ...D.customCats.map(c=>({id:c.id,name:c.name}))
+  ];
+  el.innerHTML=cats.map(c=>`
+    <div class="card-row">
+      <div class="cr-label">${c.name}</div>
+      <div style="display:flex;align-items:center;gap:4px">
+        <input type="number" inputmode="decimal" id="sp-${c.id}" value="${D.splits[c.id]||''}" placeholder="0"
+          style="width:52px;background:rgba(255,255,255,.06);border:1px solid var(--border2);border-radius:8px;padding:6px 8px;font-family:var(--mono);font-size:13px;color:var(--txt);outline:none;text-align:right"/>
+        <span style="font-family:var(--mono);font-size:13px;color:var(--txt3)">%</span>
+      </div>
+    </div>`).join('');
+}
+
+function addCustomCat(){
+  D.customCats.push({id:uid(),name:'New Category',color:CAT_COLORS[D.customCats.length%CAT_COLORS.length],split:0});
+  renderCustomCatsList();
+  renderSplitsSettings();
+}
+
+function removeCustomCat(id){
+  if(!confirm('Remove this category?'))return;
+  D.customCats=D.customCats.filter(c=>c.id!==id);
+  saveD();renderSet();toast('Removed');
+}
+
+function saveCustomCats(){
+  D.customCats.forEach(c=>{const e=document.getElementById('cn-'+c.id);if(e)c.name=e.value.trim()||c.name;});
+  saveD();renderSplitsSettings();toast('Categories saved');
+}
+
+function saveSplits(){
+  const cats=['savings','stocks','roth','truck','checking',...D.customCats.map(c=>c.id)];
+  cats.forEach(id=>{
+    const e=document.getElementById('sp-'+id);
+    const v=e?parseFloat(e.value)||0:0;
+    D.splits[id]=v;
+    const cc=D.customCats.find(c=>c.id===id);
+    if(cc)cc.split=v;
+  });
+  saveD();toast('Splits saved');
+}
+
+function confirmReset(){
+  if(confirm('Delete all data? Cannot be undone.')){D=blank();saveD();renderHist();toast('Cleared');}
+}
+
+// ══ MODALS / TOAST ════════════════════════════════════════
+function closeModals(){document.querySelectorAll('.modal-bg').forEach(m=>m.classList.remove('open'));}
+document.querySelectorAll('.modal-bg').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)closeModals();}));
+
+function toast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2200);
+}
+
+// ══ INIT ══════════════════════════════════════════════════
+try{initPay();}catch(e){console.error('Init error:',e);}
+</script>
+</body>
+</html>
