@@ -209,6 +209,43 @@ html,body{
 .empty-state strong{display:block;font-size:18px;color:var(--txt2);margin-bottom:6px;font-weight:500}
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:rgba(38,38,42,.98);border:1px solid var(--border2);color:var(--txt);font-family:var(--mono);font-size:12px;letter-spacing:.06em;padding:10px 18px;border-radius:20px;z-index:400;white-space:nowrap;pointer-events:none;transition:transform .25s cubic-bezier(.34,1.56,.64,1),opacity .2s;opacity:0}
 .toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+
+/* ── SCROLL ANIMATIONS ── */
+.reveal{
+  opacity:0;
+  transform:translateY(22px);
+  transition:opacity .55s cubic-bezier(.4,0,.2,1),transform .55s cubic-bezier(.4,0,.2,1);
+}
+.reveal.visible{opacity:1;transform:translateY(0)}
+.reveal:nth-child(1){transition-delay:.04s}
+.reveal:nth-child(2){transition-delay:.1s}
+.reveal:nth-child(3){transition-delay:.16s}
+.reveal:nth-child(4){transition-delay:.22s}
+.reveal:nth-child(5){transition-delay:.28s}
+.reveal:nth-child(6){transition-delay:.34s}
+.reveal:nth-child(7){transition-delay:.4s}
+.reveal:nth-child(8){transition-delay:.46s}
+
+.page.active{animation:pageIn .38s cubic-bezier(.4,0,.2,1) both}
+@keyframes pageIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+
+.page-title{animation:titleIn .42s cubic-bezier(.4,0,.2,1) both;animation-delay:.06s}
+@keyframes titleIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+.modal-bg.open .modal{animation:sheetIn .38s cubic-bezier(.34,1.35,.64,1) both}
+@keyframes sheetIn{from{transform:translateY(100%)}to{transform:translateY(0)}}
+
+.hist-entry{animation:fadeUp .4s cubic-bezier(.4,0,.2,1) both}
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+
+.sb-btn.active{animation:sbPop .2s cubic-bezier(.34,1.56,.64,1) both}
+@keyframes sbPop{from{transform:scale(.88)}to{transform:scale(1)}}
+
+/* cat swipe-to-delete reveal */
+.cat-row-wrap{position:relative;overflow:hidden;border-radius:0}
+.cat-del-reveal{position:absolute;right:0;top:0;bottom:0;display:flex;align-items:center;padding:0 18px;background:var(--red);color:#fff;font-size:13px;font-weight:600;transform:translateX(100%);transition:transform .22s ease;border-radius:0}
+.cat-row-wrap.deleting .cat-del-reveal{transform:translateX(0)}
+
 </style>
 </head>
 <body>
@@ -246,7 +283,7 @@ html,body{
       <div class="page-title">Paycheck</div>
     </div>
 
-    <div class="section">
+    <div class="section reveal">
       <div class="section-label">Amount</div>
       <div class="gross-card">
         <span class="gross-prefix">$</span>
@@ -254,19 +291,19 @@ html,body{
       </div>
     </div>
 
-    <div class="section" style="padding-top:16px">
+    <div class="section reveal" style="padding-top:16px">
       <div class="section-label">Split</div>
       <div class="card" id="split-rows"></div>
     </div>
 
-    <div class="section" style="padding-top:10px">
+    <div class="section reveal" style="padding-top:10px">
       <div class="remain-strip">
         <span class="rs-lbl">Unallocated</span>
         <span class="rs-val" id="remain-val">—</span>
       </div>
     </div>
 
-    <div class="section" style="padding-top:12px">
+    <div class="section reveal" style="padding-top:12px">
       <button class="btn-primary" id="log-btn" onclick="logPaycheck()" disabled>Log Paycheck</button>
     </div>
   </div>
@@ -287,23 +324,16 @@ html,body{
       <div class="page-title">Settings</div>
     </div>
 
-    <!-- Default splits -->
-    <div class="section">
-      <div class="section-label">Default % Splits</div>
-      <div class="card" id="splits-settings-list"></div>
-      <div style="margin-top:10px"><button class="btn-primary" onclick="saveSplits()">Save Splits</button></div>
-    </div>
-
-    <!-- Custom categories -->
-    <div class="section" style="padding-top:20px">
-      <div class="section-label">Custom Categories</div>
-      <div class="card" id="custom-cats-list"></div>
+    <!-- Categories -->
+    <div class="section reveal">
+      <div class="section-label">Categories</div>
+      <div class="card" id="cats-list"></div>
       <div style="margin-top:10px"><button class="btn-secondary" onclick="addCustomCat()">+ Add Category</button></div>
-      <div style="margin-top:8px"><button class="btn-primary" onclick="saveCustomCats()">Save Categories</button></div>
+      <div style="margin-top:8px"><button class="btn-primary" onclick="saveCategories()">Save</button></div>
     </div>
 
     <!-- Danger -->
-    <div class="section" style="padding-top:20px">
+    <div class="section reveal" style="padding-top:20px">
       <button class="btn-danger" onclick="confirmReset()">Reset All Data</button>
     </div>
 
@@ -349,19 +379,38 @@ html,body{
 <script>
 // ══ DATA ══════════════════════════════════════════════════
 const KEY = 'ledger_v6';
-const CAT_COLORS = ['#0a84ff','#ff453a','#ffd60a','#30d158','#bf5af2','#ff9f0a','#5ac8fa','#ff6b6b'];
-
 function blank(){
   return{
     history:[],
-    splits:{savings:0,stocks:0,roth:0,truck:0,checking:0},
-    customCats:[]
+    splits:{},
+    // All categories live here — built-ins start pre-populated, treated same as custom
+    cats:[
+      {id:'savings',  name:'Savings',       color:'#30d158', builtin:true},
+      {id:'stocks',   name:'Stocks',        color:'#0a84ff', builtin:true},
+      {id:'roth',     name:'Roth IRA',      color:'#bf5af2', builtin:true},
+      {id:'truck',    name:'Truck Payment', color:'#ffd60a', builtin:true},
+      {id:'checking', name:'Checking',      color:'#ff9f0a', builtin:true},
+    ]
   };
 }
 function loadD(){
   try{
     const raw=localStorage.getItem(KEY);
-    return raw?Object.assign(blank(),JSON.parse(raw)):blank();
+    if(!raw) return blank();
+    const saved=JSON.parse(raw);
+    const b=blank();
+    // Migrate old format (customCats + hiddenCats) into unified cats array
+    if(!saved.cats){
+      const hidden=saved.hiddenCats||[];
+      // Start with built-ins that weren't hidden
+      b.cats=b.cats.filter(c=>!hidden.includes(c.id));
+      // Append old custom cats
+      (saved.customCats||[]).forEach(c=>b.cats.push({id:c.id,name:c.name,color:c.color,split:c.split||0}));
+      b.splits=saved.splits||{};
+      b.history=saved.history||[];
+      return b;
+    }
+    return Object.assign(b, saved);
   }catch(e){return blank();}
 }
 function saveD(){
@@ -375,15 +424,7 @@ function fmt(n,d=2){return'$'+Number(n).toLocaleString('en-US',{minimumFractionD
 function uid(){return Math.random().toString(36).slice(2,8)}
 
 function allCats(){
-  const base=[
-    {id:'savings',  name:'Savings',      color:'#30d158'},
-    {id:'stocks',   name:'Stocks',       color:'#0a84ff'},
-    {id:'roth',     name:'Roth IRA',     color:'#bf5af2'},
-    {id:'truck',    name:'Truck Payment',color:'#ffd60a'},
-    {id:'checking', name:'Checking',     color:'#ff9f0a'},
-  ];
-  D.customCats.forEach(c=>base.push({id:c.id,name:c.name,color:c.color}));
-  return base;
+  return D.cats||[];
 }
 
 // ══ NAV ════════════════════════════════════════════════════
@@ -395,6 +436,11 @@ function go(name){
   if(name==='paycheck') initPay();
   if(name==='history')  renderHist();
   if(name==='settings') renderSet();
+  // trigger reveals on newly visible page
+  setTimeout(()=>{
+    const obs=makeObserver();
+    document.querySelectorAll('.page.active .reveal:not(.visible)').forEach(el=>obs.observe(el));
+  },40);
 }
 
 // ══ PAYCHECK ═══════════════════════════════════════════════
@@ -405,7 +451,7 @@ function initPay(){
   const rows=document.getElementById('split-rows');
   rows.innerHTML='';
   allCats().forEach(cat=>{
-    const pctVal=D.splits[cat.id]||(D.customCats.find(c=>c.id===cat.id)||{}).split||0;
+    const pctVal=D.splits[cat.id]||0;
     ovrs[cat.id]=null;
     rows.innerHTML+=`
       <div class="split-row">
@@ -515,7 +561,7 @@ function renderHist(){
       .map(c=>`<div class="hist-chip"><div class="hc-lbl">${c.name}</div><div class="hc-val" style="color:${c.color}">${fmt(e[c.id])}</div></div>`)
       .join('');
     const payChip=`<div class="hist-chip"><div class="hc-lbl">Paycheck</div><div class="hc-val">${fmt(e.paycheck||0)}</div></div>`;
-    return`<div class="hist-entry">
+    return`<div class="hist-entry" style="animation-delay:${ri*0.06}s">
       <div class="hist-header">
         <div>
           <div class="hist-date">${e.date}</div>
@@ -561,72 +607,58 @@ function deleteEntry(idx){
 
 // ══ SETTINGS ═══════════════════════════════════════════════
 function renderSet(){
-  renderCustomCatsList();
-  renderSplitsSettings();
+  renderCatsList();
 }
 
-function renderCustomCatsList(){
-  const el=document.getElementById('custom-cats-list');
-  if(!D.customCats.length){
-    el.innerHTML='<div class="card-row"><div class="cr-label" style="color:var(--txt3);font-style:italic;font-size:13px">No custom categories yet</div></div>';
+function renderCatsList(){
+  const el=document.getElementById('cats-list');
+  const cats=D.cats||[];
+  if(!cats.length){
+    el.innerHTML='<div class="card-row"><div class="cr-label" style="color:var(--txt3);font-style:italic;font-size:13px">No categories — add one below</div></div>';
     return;
   }
-  el.innerHTML=D.customCats.map(c=>`
-    <div class="card-row">
-      <div style="width:10px;height:10px;border-radius:50%;background:${c.color};flex-shrink:0"></div>
-      <div style="flex:1"><input type="text" id="cn-${c.id}" value="${c.name}" style="background:none;border:none;outline:none;font-size:14px;color:var(--txt);width:100%"/></div>
-      <button onclick="removeCustomCat('${c.id}')" style="background:none;border:none;color:var(--red);font-size:20px;cursor:pointer;padding:0 4px;line-height:1">×</button>
-    </div>`).join('');
-}
-
-function renderSplitsSettings(){
-  const el=document.getElementById('splits-settings-list');
-  const cats=[
-    {id:'savings',name:'Savings'},
-    {id:'stocks',name:'Stocks'},
-    {id:'roth',name:'Roth IRA'},
-    {id:'truck',name:'Truck Payment'},
-    {id:'checking',name:'Checking'},
-    ...D.customCats.map(c=>({id:c.id,name:c.name}))
-  ];
-  el.innerHTML=cats.map(c=>`
-    <div class="card-row">
-      <div class="cr-label">${c.name}</div>
-      <div style="display:flex;align-items:center;gap:4px">
-        <input type="number" inputmode="decimal" id="sp-${c.id}" value="${D.splits[c.id]||''}" placeholder="0"
+  el.innerHTML=cats.map((c,ci)=>`
+    <div class="card-row" style="animation:fadeUp .3s ease both;animation-delay:${ci*0.05}s">
+      <div style="width:9px;height:9px;border-radius:50%;background:${c.color};flex-shrink:0"></div>
+      <div style="flex:1;padding:0 8px">
+        <input type="text" id="cn-${c.id}" value="${c.name}"
+          style="background:none;border:none;outline:none;font-size:14px;color:var(--txt);width:100%;font-family:inherit"/>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+        <input type="number" inputmode="decimal" id="sp-${c.id}" value="${D.splits[c.id]||''}" placeholder="0%"
           style="width:52px;background:rgba(255,255,255,.06);border:1px solid var(--border2);border-radius:8px;padding:6px 8px;font-family:var(--mono);font-size:13px;color:var(--txt);outline:none;text-align:right"/>
-        <span style="font-family:var(--mono);font-size:13px;color:var(--txt3)">%</span>
+        <span style="font-family:var(--mono);font-size:12px;color:var(--txt3)">%</span>
+        <button onclick="removeCat('${c.id}')"
+          style="background:rgba(255,69,58,.12);border:1px solid rgba(255,69,58,.22);border-radius:8px;color:var(--red);font-size:12px;font-weight:600;cursor:pointer;padding:5px 10px">
+          ×
+        </button>
       </div>
     </div>`).join('');
 }
 
 function addCustomCat(){
-  D.customCats.push({id:uid(),name:'New Category',color:CAT_COLORS[D.customCats.length%CAT_COLORS.length],split:0});
-  renderCustomCatsList();
-  renderSplitsSettings();
+  const CAT_COLORS=['#0a84ff','#ff453a','#ffd60a','#30d158','#bf5af2','#ff9f0a','#5ac8fa','#ff6b6b'];
+  D.cats=D.cats||[];
+  D.cats.push({id:uid(),name:'New Category',color:CAT_COLORS[D.cats.length%CAT_COLORS.length]});
+  renderCatsList();
 }
 
-function removeCustomCat(id){
-  if(!confirm('Remove this category?'))return;
-  D.customCats=D.customCats.filter(c=>c.id!==id);
-  saveD();renderSet();toast('Removed');
+function removeCat(id){
+  D.cats=(D.cats||[]).filter(c=>c.id!==id);
+  delete D.splits[id];
+  saveD();renderSet();toast('Category deleted');
 }
 
-function saveCustomCats(){
-  D.customCats.forEach(c=>{const e=document.getElementById('cn-'+c.id);if(e)c.name=e.value.trim()||c.name;});
-  saveD();renderSplitsSettings();toast('Categories saved');
-}
 
-function saveSplits(){
-  const cats=['savings','stocks','roth','truck','checking',...D.customCats.map(c=>c.id)];
-  cats.forEach(id=>{
-    const e=document.getElementById('sp-'+id);
-    const v=e?parseFloat(e.value)||0:0;
-    D.splits[id]=v;
-    const cc=D.customCats.find(c=>c.id===id);
-    if(cc)cc.split=v;
+
+function saveCategories(){
+  (D.cats||[]).forEach(c=>{
+    const nameEl=document.getElementById('cn-'+c.id);
+    if(nameEl) c.name=nameEl.value.trim()||c.name;
+    const splitEl=document.getElementById('sp-'+c.id);
+    D.splits[c.id]=splitEl?parseFloat(splitEl.value)||0:0;
   });
-  saveD();toast('Splits saved');
+  saveD();toast('Saved');
 }
 
 function confirmReset(){
@@ -643,8 +675,23 @@ function toast(msg){
   setTimeout(()=>t.classList.remove('show'),2200);
 }
 
+// ══ SCROLL REVEAL ══════════════════════════════════════════
+function makeObserver(){
+  return new IntersectionObserver(entries=>{
+    entries.forEach(en=>{if(en.isIntersecting)en.target.classList.add('visible');});
+  },{threshold:0.1,rootMargin:'0px 0px -16px 0px'});
+}
+
+function initReveal(){
+  const obs=makeObserver();
+  document.querySelectorAll('.reveal').forEach(el=>obs.observe(el));
+}
+
 // ══ INIT ══════════════════════════════════════════════════
-try{initPay();}catch(e){console.error('Init error:',e);}
+try{
+  initPay();
+  setTimeout(initReveal,80);
+}catch(e){console.error('Init error:',e);}
 </script>
 </body>
 </html>
